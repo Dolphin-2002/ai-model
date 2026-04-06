@@ -325,22 +325,5 @@ The model is too large for your RAM. Use a smaller quantization or smaller model
 
 > CPU speed estimates are for a modern multi-core CPU. Actual performance varies by hardware.
 
----
 
-## Git Setup
 
-This project is configured with:
-- **Username:** Dolphin-2002
-- **Email:** dolphin.co.solution@gmail.com
-
-The `.gitignore` excludes `venv/`, model files (`*.gguf`), and `__pycache__/` from version control.
-
-```bash
-# First commit
-git add .
-git commit -m "Initial commit: Local AI Chat app"
-
-# Push to GitHub (after creating a repo)
-git remote add origin https://github.com/Dolphin-2002/ai-model.git
-git push -u origin main
-```
