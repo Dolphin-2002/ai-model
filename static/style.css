@@ -38,20 +38,206 @@ html, body {
 /* ── Header ──────────────────────────────────────────────── */
 .header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--surface2);
+}
+
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
 }
 
 .header h1 {
   font-size: 1.3rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .subtitle {
   font-size: 0.8rem;
   color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Model selector ──────────────────────────────────────── */
+.model-selector {
+  position: relative;
+}
+
+.model-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--surface2);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  max-width: 260px;
+}
+
+.model-btn:hover {
+  border-color: var(--accent);
+  background: var(--surface2);
+}
+
+.model-btn .chevron {
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.model-btn.open .chevron {
+  transform: rotate(180deg);
+}
+
+#activeModelLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 320px;
+  background: var(--surface);
+  border: 1px solid var(--surface2);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: 100;
+  animation: fadeIn 0.15s ease;
+}
+
+.model-dropdown.show {
+  display: block;
+}
+
+.dropdown-header {
+  padding: 10px 14px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.model-list {
+  padding: 4px 6px 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.model-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.model-item:hover {
+  background: var(--surface2);
+}
+
+.model-item.active {
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+}
+
+.model-item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.model-item-name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-item-size {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.model-item-badge {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.model-item-loading {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Icon button (new chat) ──────────────────────────────── */
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--surface2);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.icon-btn:hover {
+  border-color: var(--accent);
+  background: var(--surface2);
+}
+
+/* ── Toast ───────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--surface2);
+  color: var(--text);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 /* ── Chat area ───────────────────────────────────────────── */

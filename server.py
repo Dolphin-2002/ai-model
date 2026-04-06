@@ -1,3 +1,4 @@
+import gc
 import os
 from pathlib import Path
 
@@ -12,33 +13,71 @@ from llama_cpp import Llama
 # Configuration
 # ---------------------------------------------------------------------------
 MODEL_DIR = Path(__file__).parent / "models"
-# Change this to match your downloaded .gguf filename
-MODEL_NAME = os.environ.get(
-    "MODEL_NAME", "OpenAI-20B-NEO-CODEPlus-Uncensored-IQ4_NL.gguf"
-)
-MODEL_PATH = MODEL_DIR / MODEL_NAME
-
 CONTEXT_SIZE = int(os.environ.get("CONTEXT_SIZE", "2048"))
 MAX_TOKENS = int(os.environ.get("MAX_TOKENS", "512"))
 
 # ---------------------------------------------------------------------------
-# Load model
+# Model manager
 # ---------------------------------------------------------------------------
-if not MODEL_PATH.exists():
-    raise FileNotFoundError(
-        f"Model not found at {MODEL_PATH}.\n"
-        "Run:  python download_model.py\n"
-        "Or place your .gguf file in the models/ directory and set MODEL_NAME."
-    )
+llm = None
+current_model_name: str | None = None
 
-print(f"Loading model: {MODEL_PATH} …")
-llm = Llama(
-    model_path=str(MODEL_PATH),
-    n_ctx=CONTEXT_SIZE,
-    n_threads=os.cpu_count() or 4,
-    verbose=False,
-)
-print("Model loaded.")
+
+def get_available_models() -> list[dict]:
+    """Scan the models/ directory for .gguf files."""
+    models = []
+    if MODEL_DIR.exists():
+        for f in sorted(MODEL_DIR.iterdir()):
+            if f.suffix == ".gguf" and f.is_file():
+                size_mb = f.stat().st_size / (1024 * 1024)
+                if size_mb >= 1024:
+                    size_str = f"{size_mb / 1024:.1f} GB"
+                else:
+                    size_str = f"{size_mb:.0f} MB"
+                models.append({
+                    "name": f.name,
+                    "size": size_str,
+                    "size_bytes": f.stat().st_size,
+                })
+    return models
+
+
+def load_model(model_name: str):
+    """Load a GGUF model by filename. Unloads the previous model first."""
+    global llm, current_model_name
+
+    model_path = MODEL_DIR / model_name
+    if not model_path.exists():
+        raise FileNotFoundError(f"Model not found: {model_path}")
+
+    # Unload previous model
+    if llm is not None:
+        del llm
+        gc.collect()
+        print(f"Unloaded previous model: {current_model_name}")
+
+    print(f"Loading model: {model_path} …")
+    llm = Llama(
+        model_path=str(model_path),
+        n_ctx=CONTEXT_SIZE,
+        n_threads=os.cpu_count() or 4,
+        verbose=False,
+    )
+    current_model_name = model_name
+    print(f"Model loaded: {model_name}")
+
+
+# Load initial model
+initial_model = os.environ.get("MODEL_NAME", "")
+if not initial_model:
+    available = get_available_models()
+    if available:
+        initial_model = available[0]["name"]
+
+if initial_model and (MODEL_DIR / initial_model).exists():
+    load_model(initial_model)
+else:
+    print("No model loaded. Place .gguf files in the models/ directory.")
 
 # ---------------------------------------------------------------------------
 # FastAPI app
@@ -57,7 +96,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 class ChatRequest(BaseModel):
-    messages: list[dict]  # [{"role": "user"|"assistant", "content": "..."}]
+    messages: list[dict]
 
 
 class ChatResponse(BaseModel):
@@ -65,18 +104,50 @@ class ChatResponse(BaseModel):
     content: str
 
 
+class SwitchModelRequest(BaseModel):
+    model_name: str
+
+
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
 
 
+@app.get("/api/models")
+async def list_models():
+    """List all available .gguf models and which one is active."""
+    models = get_available_models()
+    return {
+        "models": models,
+        "active": current_model_name,
+    }
+
+
+@app.post("/api/models/switch")
+async def switch_model(req: SwitchModelRequest):
+    """Switch to a different model at runtime."""
+    available = [m["name"] for m in get_available_models()]
+    if req.model_name not in available:
+        raise HTTPException(status_code=404, detail=f"Model not found: {req.model_name}")
+
+    if req.model_name == current_model_name:
+        return {"status": "ok", "message": "Model already active", "active": current_model_name}
+
+    try:
+        load_model(req.model_name)
+        return {"status": "ok", "message": f"Switched to {req.model_name}", "active": current_model_name}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     """Send the conversation history to the model and return its reply."""
+    if llm is None:
+        raise HTTPException(status_code=503, detail="No model loaded. Select a model first.")
     if not req.messages:
         raise HTTPException(status_code=400, detail="messages list is empty")
 
-    # Build a prompt from the conversation (ChatML-style for TinyLlama)
     prompt = build_prompt(req.messages)
 
     output = llm(
